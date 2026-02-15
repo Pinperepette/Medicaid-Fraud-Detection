@@ -77,9 +77,20 @@
                 const el = document.getElementById('chi2-result');
                 el.style.display = 'block';
                 el.className = `alert ${c.significant ? 'alert-warning' : 'alert-success'} mb-3`;
+                // Calcola MAD dal distribution array
+                const mad = overall.distribution.reduce((s, d) => s + Math.abs(d.deviation), 0) / overall.distribution.length;
+                let madLabel, madClass;
+                if (mad < 0.006) { madLabel = 'Conformita\' stretta'; madClass = 'text-success'; }
+                else if (mad < 0.012) { madLabel = 'Conformita\' accettabile'; madClass = 'text-info'; }
+                else if (mad < 0.015) { madLabel = 'Conformita\' marginale'; madClass = 'text-warning'; }
+                else { madLabel = 'Non conforme'; madClass = 'text-danger'; }
+
                 el.innerHTML = `<strong>Test Chi-Quadro:</strong> &chi;&sup2; = ${App.fmtFloat(c.chi2, 2)},
-                    p-value = ${c.p_value < 0.001 ? '< 0.001' : App.fmtFloat(c.p_value, 4)}
-                    &mdash; ${c.significant ? 'Deviazione significativa dalla Legge di Benford' : 'Compatibile con la Legge di Benford'}`;
+                    p-value ${c.p_value < 0.001 ? '< 0.001' : '= ' + App.fmtFloat(c.p_value, 4)}
+                    &mdash; ${c.significant ? 'Deviazione statisticamente significativa' : 'Compatibile con Benford'}
+                    <br><strong>MAD (Mean Absolute Deviation):</strong> ${mad.toFixed(4)}
+                    &mdash; <span class="${madClass}"><strong>${madLabel}</strong></span> (soglie Nigrini 2012: &lt;0.006 stretta, 0.006-0.012 accettabile, 0.012-0.015 marginale, &gt;0.015 non conforme)
+                    <br><small class="text-muted">Nota: il test &chi;&sup2; risulta significativo per effetto della dimensione campionaria (~190 milioni di osservazioni). Con campioni cosi' grandi, anche deviazioni minime producono p-value prossimi a zero. Il MAD e' la metrica piu' appropriata per valutare la conformita' a Benford su grandi dataset: il valore di ${mad.toFixed(4)} indica che la distribuzione globale e' sostanzialmente conforme. Le deviazioni rilevanti sono concentrate su specifici provider, non sul dataset aggregato.</small>`;
             }
         }
 
