@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provider Risk Score - Medicaid Fraud Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">Medicaid Fraud Detection</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navMain">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Metodologia</a></li>
+                    <li class="nav-item"><a class="nav-link" href="overview.html">Overview</a></li>
+                    <li class="nav-item"><a class="nav-link" href="benford.html">Benford</a></li>
+                    <li class="nav-item"><a class="nav-link" href="outliers.html">Outliers</a></li>
+                    <li class="nav-item"><a class="nav-link" href="billing.html">Billing</a></li>
+                    <li class="nav-item"><a class="nav-link" href="temporal.html">Temporale</a></li>
+                    <li class="nav-item"><a class="nav-link" href="volume.html">Volume</a></li>
+                    <li class="nav-item"><a class="nav-link" href="risk.html">Risk Score</a></li>
+                    <li class="nav-item"><a class="nav-link" href="provider.html">Provider</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 py-3">
+        <div class="page-header">
+            <h1>Provider Risk Score</h1>
+            <p>Punteggio composito 0-100 basato su 8 componenti. Provider con score &ge;70 sono considerati ad alto rischio.</p>
+        </div>
+
+        <!-- Distribution -->
+        <h2 class="section-title">Distribuzione Risk Score</h2>
+        <div class="chart-container chart-md" id="chart-distribution"></div>
+
+        <!-- Stacked Bar Top 10 -->
+        <h2 class="section-title">Top 10 Provider - Composizione Score</h2>
+        <div class="chart-container chart-md" id="chart-stacked"></div>
+
+        <!-- Ranking Table -->
+        <h2 class="section-title">Ranking Completo</h2>
+        <div class="table-container" id="table-ranking"></div>
+
+        <!-- Correlation Heatmap -->
+        <h2 class="section-title">Correlazione tra Componenti</h2>
+        <div class="chart-container chart-lg" id="chart-correlation"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/tables.js"></script>
+    <script>
+    (async function() {
+        // Distribution histogram (pre-binned)
+        const dist = await App.fetchData('risk/distribution.json');
+        if (dist && dist.bin_edges && dist.counts) {
+            // Build bar chart from pre-binned data
+            const edges = dist.bin_edges;
+            const midpoints = [];
+            for (let i = 0; i < edges.length - 1; i++) {
+                midpoints.push((edges[i] + edges[i + 1]) / 2);
+            }
+            const trace = {
+                x: midpoints,
+                y: dist.counts,
+                type: 'bar',
+                marker: { color: '#1a73e8' },
+                width: edges[1] - edges[0],
+            };
+            Plotly.newPlot('chart-distribution', [trace], App.plotlyLayout(
+                `Distribuzione Risk Score (N=${App.fmtNum(dist.total)}, Media=${App.fmtFloat(dist.mean,1)}, Mediana=${App.fmtFloat(dist.median,1)}, Alto Rischio=${App.fmtNum(dist.high_risk_count)})`, {
+                    xaxis: { title: 'Risk Score' },
+                    yaxis: { title: 'Conteggio' },
+                    shapes: [{
+                        type: 'line', x0: 70, x1: 70, y0: 0, y1: 1,
+                        yref: 'paper', line: { color: 'red', dash: 'dash', width: 2 },
+                    }],
+                    annotations: [{
+                        x: 70, y: 1, yref: 'paper', text: 'Soglia Alto Rischio',
+                        showarrow: false, yanchor: 'bottom', font: { color: 'red' },
+                    }],
+                }
+            ), App.plotlyConfig);
+        }
+
+        // Ranking
+        const ranking = await App.fetchData('risk/ranking.json');
+        if (ranking && ranking.length) {
+            // Stacked bar - top 10
+            const top10 = ranking.slice(0, 10);
+            const components = [
+                { field: 'benford_score', label: 'Benford' },
+                { field: 'zscore_severity', label: 'Z-Score' },
+                { field: 'isolation_forest_score', label: 'Isolation Forest' },
+                { field: 'billing_mismatch_score', label: 'Mismatch' },
+                { field: 'temporal_spike_score', label: 'Spike' },
+                { field: 'ghost_provider_score', label: 'Ghost' },
+                { field: 'claims_per_bene_score', label: 'Claims/Bene' },
+                { field: 'concentration_score', label: 'Concentrazione' },
+            ];
+            Charts.stackedBar('chart-stacked', top10, 'BILLING_PROVIDER_NPI_NUM', components,
+                'Top 10 Provider - Composizione Risk Score');
+
+            // Full ranking table
+            Tables.render('table-ranking', ranking, [
+                'BILLING_PROVIDER_NPI_NUM', 'total_risk_score',
+                'benford_score', 'zscore_severity', 'isolation_forest_score',
+                'billing_mismatch_score', 'temporal_spike_score', 'ghost_provider_score',
+                'claims_per_bene_score', 'concentration_score',
+                'total_paid', 'total_claims',
+            ], { order: [[1, 'desc']] });
+        }
+
+        // Correlation
+        const corr = await App.fetchData('risk/correlation.json');
+        if (corr && corr.columns && corr.values) {
+            Charts.heatmap('chart-correlation', corr.columns, corr.values,
+                'Matrice di Correlazione - Componenti Risk Score');
+        }
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medicaid Fraud Detection System - Metodologia e Risultati</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <style>
+        .hero { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 3rem 0; margin-top: -1rem; margin-bottom: 2rem; }
+        .hero h1 { font-size: 2.2rem; font-weight: 800; }
+        .hero .lead { font-size: 1.15rem; opacity: 0.9; }
+        .technique-card { background: #fff; border-radius: 10px; padding: 1.5rem; box-shadow: 0 2px 12px rgba(0,0,0,0.07); margin-bottom: 1.5rem; border-left: 4px solid var(--primary); transition: transform 0.15s; }
+        .technique-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+        .technique-card h3 { font-size: 1.15rem; font-weight: 700; color: #1a1a2e; }
+        .technique-card .badge-section { font-size: 0.75rem; font-weight: 600; }
+        .stat-highlight { font-size: 2rem; font-weight: 800; color: var(--primary); }
+        .finding-card { background: #fff3cd; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; border-left: 4px solid #ffc107; }
+        .finding-card.critical { background: #f8d7da; border-left-color: #dc3545; }
+        .risk-weight { display: inline-block; background: #e9ecef; border-radius: 4px; padding: 2px 8px; font-size: 0.8rem; font-weight: 600; }
+        .formula { background: #f8f9fa; border-radius: 6px; padding: 0.75rem 1rem; font-family: 'Courier New', monospace; font-size: 0.9rem; margin: 0.5rem 0; border: 1px solid #dee2e6; }
+        .toc a { color: #1a73e8; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .section-divider { border-top: 3px solid #1a73e8; margin: 2.5rem 0 2rem; }
+        .nav-card { background: #fff; border-radius: 10px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); text-align: center; transition: all 0.2s; text-decoration: none; color: inherit; display: block; }
+        .nav-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); color: var(--primary); }
+        .nav-card h5 { font-size: 1rem; margin-bottom: 0.25rem; }
+        .nav-card p { font-size: 0.8rem; color: #6c757d; margin: 0; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">Medicaid Fraud Detection</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navMain">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Metodologia</a></li>
+                    <li class="nav-item"><a class="nav-link" href="overview.html">Overview</a></li>
+                    <li class="nav-item"><a class="nav-link" href="benford.html">Benford</a></li>
+                    <li class="nav-item"><a class="nav-link" href="outliers.html">Outliers</a></li>
+                    <li class="nav-item"><a class="nav-link" href="billing.html">Billing</a></li>
+                    <li class="nav-item"><a class="nav-link" href="temporal.html">Temporale</a></li>
+                    <li class="nav-item"><a class="nav-link" href="volume.html">Volume</a></li>
+                    <li class="nav-item"><a class="nav-link" href="risk.html">Risk Score</a></li>
+                    <li class="nav-item"><a class="nav-link" href="provider.html">Provider</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <div class="hero">
+        <div class="container">
+            <h1>Medicaid Provider Spending: Fraud Detection System</h1>
+            <p class="lead mt-3">Analisi statistica multi-dimensionale per l'identificazione di anomalie e potenziali frodi nei dati di spesa Medicaid del Centers for Medicare &amp; Medicaid Services (CMS).</p>
+            <div class="row mt-4 g-3">
+                <div class="col-auto"><span class="stat-highlight" id="stat-spend"></span><br><small>Spesa Analizzata</small></div>
+                <div class="col-auto"><span class="stat-highlight" id="stat-providers"></span><br><small>Provider</small></div>
+                <div class="col-auto"><span class="stat-highlight" id="stat-claims"></span><br><small>Claims</small></div>
+                <div class="col-auto"><span class="stat-highlight text-warning" id="stat-risk"></span><br><small>Alto Rischio</small></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container pb-5">
+
+        <!-- Indice -->
+        <div class="row mb-4">
+            <div class="col-lg-8">
+                <h2 class="section-title">Indice</h2>
+                <div class="toc">
+                    <ol>
+                        <li><a href="#dataset">Dataset e Preprocessing</a></li>
+                        <li><a href="#architettura">Architettura del Sistema</a></li>
+                        <li><a href="#tecniche">Le 6 Tecniche di Rilevamento</a>
+                            <ol type="a">
+                                <li><a href="#t-benford">Legge di Benford</a></li>
+                                <li><a href="#t-outliers">Outlier Statistici (Z-Score, IQR, Isolation Forest)</a></li>
+                                <li><a href="#t-billing">Billing Mismatch</a></li>
+                                <li><a href="#t-temporal">Anomalie Temporali</a></li>
+                                <li><a href="#t-volume">Anomalie di Volume</a></li>
+                                <li><a href="#t-risk">Risk Score Composito</a></li>
+                            </ol>
+                        </li>
+                        <li><a href="#risultati">Principali Risultati</a></li>
+                        <li><a href="#conclusioni">Conclusioni e Ipotesi Investigative</a></li>
+                        <li><a href="#limiti">Limiti dell'Analisi</a></li>
+                        <li><a href="#navigazione">Navigazione delle Analisi</a></li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. Dataset -->
+        <div class="section-divider" id="dataset"></div>
+        <h2 class="section-title">1. Dataset e Preprocessing</h2>
+        <div class="row">
+            <div class="col-lg-8">
+                <p>Il dataset analizzato proviene dal <strong>CMS Medicaid Provider Spending</strong>, disponibile pubblicamente su <a href="https://opendata.hhs.gov/datasets/medicaid-provider-spending/" target="_blank" rel="noopener">opendata.hhs.gov/datasets/medicaid-provider-spending/</a>. Riporta i pagamenti aggregati per combinazione di provider (NPI), procedura (HCPCS) e mese. Ogni record rappresenta quanto un provider ha fatturato per una specifica procedura in un dato mese.</p>
+
+                <h5>Struttura dei dati grezzi</h5>
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr><th>Campo</th><th>Descrizione</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>BILLING_PROVIDER_NPI_NUM</code></td><td>NPI del provider che ha emesso la fattura</td></tr>
+                        <tr><td><code>SERVICING_PROVIDER_NPI_NUM</code></td><td>NPI del provider che ha erogato il servizio</td></tr>
+                        <tr><td><code>HCPCS_CODE</code></td><td>Codice della procedura medica (Healthcare Common Procedure Coding System)</td></tr>
+                        <tr><td><code>CLAIM_FROM_MONTH</code></td><td>Mese di riferimento del claim (YYYY-MM)</td></tr>
+                        <tr><td><code>TOTAL_PAID</code></td><td>Importo totale pagato ($)</td></tr>
+                        <tr><td><code>TOTAL_CLAIMS</code></td><td>Numero di claims</td></tr>
+                        <tr><td><code>TOTAL_UNIQUE_BENEFICIARIES</code></td><td>Numero di beneficiari unici</td></tr>
+                    </tbody>
+                </table>
+
+                <h5>Preprocessing</h5>
+                <p>I dati grezzi vengono caricati in un database analitico (DuckDB) e pre-aggregati in 7 tabelle ottimizzate per l'analisi:</p>
+                <ul>
+                    <li><strong>agg_provider_monthly</strong> &mdash; Spesa mensile per provider</li>
+                    <li><strong>agg_provider_hcpcs</strong> &mdash; Spesa per provider &times; procedura, con metriche derivate (costo/claim, costo/beneficiario, claims/beneficiario)</li>
+                    <li><strong>agg_hcpcs_stats</strong> &mdash; Statistiche per procedura (media, std, mediana, Q1, Q3) calcolate su tutti i provider con &ge;5 provider per HCPCS</li>
+                    <li><strong>agg_billing_servicing</strong> &mdash; Relazioni billing/servicing e percentuali di mismatch</li>
+                    <li><strong>agg_benford</strong> &mdash; Distribuzione della prima cifra degli importi per provider e HCPCS</li>
+                    <li><strong>agg_provider_summary</strong> &mdash; Profilo complessivo di ogni provider</li>
+                    <li><strong>provider_risk_scores</strong> &mdash; Punteggi di rischio compositi (calcolati dal sistema)</li>
+                </ul>
+                <p>Filtri applicati: <code>TOTAL_PAID &gt; 0</code>, <code>TOTAL_CLAIMS &gt; 0</code>, <code>BILLING_PROVIDER_NPI_NUM IS NOT NULL</code>.</p>
+            </div>
+        </div>
+
+        <!-- 2. Architettura -->
+        <div class="section-divider" id="architettura"></div>
+        <h2 class="section-title">2. Architettura del Sistema</h2>
+        <div class="row">
+            <div class="col-lg-8">
+                <p>Il sistema segue un'architettura <strong>pre-compute + static site</strong>:</p>
+                <ol>
+                    <li><strong>Ingestione</strong> &mdash; Il CSV grezzo (~11 GB) viene caricato in DuckDB con creazione di tabelle aggregate e indici.</li>
+                    <li><strong>Calcolo Risk Score</strong> &mdash; 8 componenti di rischio vengono calcolate e normalizzate a percentile (0-100) per ogni provider.</li>
+                    <li><strong>Pre-computazione</strong> &mdash; Tutte le analisi vengono eseguite in parallelo (7 sezioni concorrenti + 50 dettagli provider) e salvate come file JSON.</li>
+                    <li><strong>Sito statico</strong> &mdash; Le pagine HTML caricano i JSON e li visualizzano con Plotly.js, Bootstrap 5 e DataTables. Zero backend, zero database in produzione.</li>
+                </ol>
+                <p>L'intero processo di pre-computazione richiede circa <strong>25 secondi</strong> su hardware con DuckDB multi-core.</p>
+            </div>
+        </div>
+
+        <!-- 3. Tecniche -->
+        <div class="section-divider" id="tecniche"></div>
+        <h2 class="section-title">3. Le 6 Tecniche di Rilevamento Frode</h2>
+
+        <!-- 3a. Benford -->
+        <div class="technique-card" id="t-benford">
+            <div class="d-flex justify-content-between align-items-start">
+                <h3>3a. Legge di Benford</h3>
+                <span class="risk-weight">Peso nel Risk Score: 10%</span>
+            </div>
+            <span class="badge bg-primary badge-section">ANALISI DISTRIBUZIONALE</span>
+
+            <p class="mt-2">La <strong>Legge di Benford</strong> (o Legge della Prima Cifra) stabilisce che in molti dataset naturali, la prima cifra significativa non e' uniformemente distribuita ma segue una distribuzione logaritmica:</p>
+
+            <div class="formula">
+                P(d) = log<sub>10</sub>(1 + 1/d), &nbsp; per d = 1, 2, ..., 9
+            </div>
+
+            <p>La cifra "1" appare come prima cifra nel ~30.1% dei casi, "2" nel ~17.6%, e cosi' via fino a "9" con ~4.6%. Dati manipolati artificialmente (importi inventati, arrotondati, o duplicati) tendono a deviare da questa distribuzione.</p>
+
+            <h5>Metriche calcolate</h5>
+            <ul>
+                <li><strong>MAD (Mean Absolute Deviation)</strong> &mdash; Media delle deviazioni assolute tra frequenza osservata e attesa per ciascuna delle 9 cifre. Valori &gt; 0.015 sono considerati "non conformi", &gt; 0.03 "significativamente devianti".</li>
+                <li><strong>Test Chi-Quadro (&chi;&sup2;)</strong> &mdash; Test di bonta' di adattamento con 8 gradi di liberta'. Un p-value &lt; 0.05 indica deviazione statisticamente significativa dalla Legge di Benford.</li>
+            </ul>
+
+            <h5>Livelli di analisi</h5>
+            <ul>
+                <li><strong>Globale</strong> &mdash; Distribuzione complessiva di tutti gli importi</li>
+                <li><strong>Per HCPCS</strong> &mdash; Ogni procedura analizzata separatamente (minimo 100 record)</li>
+                <li><strong>Per Provider</strong> &mdash; Ogni provider analizzato separatamente (minimo 50 record)</li>
+            </ul>
+
+            <p><strong>Interpretazione:</strong> Un provider con MAD elevato potrebbe avere importi non organici (inventati, arrotondati sistematicamente, o copiati). Tuttavia, deviazioni da Benford possono avere spiegazioni legittime (es. tariffe fisse, arrotondamenti di sistema). Per questo il Benford ha peso moderato (10%) nel risk score composito.</p>
+        </div>
+
+        <!-- 3b. Outliers -->
+        <div class="technique-card" id="t-outliers">
+            <div class="d-flex justify-content-between align-items-start">
+                <h3>3b. Outlier Statistici</h3>
+                <span class="risk-weight">Peso: Z-Score 20% + Isolation Forest 15% = 35%</span>
+            </div>
+            <span class="badge bg-danger badge-section">ANALISI STATISTICA</span>
+
+            <p class="mt-2">Tre metodi complementari identificano provider che fatturano importi anomali rispetto ai loro colleghi per la stessa procedura:</p>
+
+            <h5>Z-Score (peso 20%)</h5>
+            <p>Misura quante deviazioni standard un provider dista dalla media della sua procedura:</p>
+            <div class="formula">
+                Z = (costo_per_claim<sub>provider</sub> &minus; media_costo_per_claim<sub>HCPCS</sub>) / std_costo_per_claim<sub>HCPCS</sub>
+            </div>
+            <p>Provider con |Z| &gt; 3 sono flaggati come outlier (probabilita' &lt; 0.3% in distribuzione normale). Il sistema calcola Z-score sia su <code>cost_per_claim</code> che su <code>cost_per_beneficiary</code>. Il risk score usa il massimo |Z| tra tutte le procedure di un provider.</p>
+
+            <h5>Metodo IQR di Tukey</h5>
+            <p>Metodo non-parametrico robusto agli outlier stessi. Definisce le "fences":</p>
+            <div class="formula">
+                Limite inferiore = Q1 &minus; 1.5 &times; IQR<br>
+                Limite superiore = Q3 + 1.5 &times; IQR<br>
+                dove IQR = Q3 &minus; Q1
+            </div>
+            <p>Valori oltre le fences sono outlier. Questo metodo e' complementare allo Z-score perche' non assume normalita'.</p>
+
+            <h5>Isolation Forest (peso 15%)</h5>
+            <p>Algoritmo di machine learning non supervisionato (ensemble di alberi decisionali). Isola le osservazioni anomale: punti facili da isolare (pochi split necessari) sono piu' anomali.</p>
+            <ul>
+                <li>Feature utilizzate: <code>cost_per_claim</code>, <code>cost_per_beneficiary</code>, <code>claims_per_beneficiary</code>, <code>total_paid</code></li>
+                <li>Trasformazione log per gestire la skewness</li>
+                <li>Contamination = 5% (il modello si aspetta che ~5% dei dati siano anomali)</li>
+            </ul>
+
+            <p><strong>Interpretazione:</strong> Provider flaggati da tutti e tre i metodi hanno una probabilita' molto alta di avere pattern di fatturazione anomali. Le cause possono essere upcoding (fatturare procedure piu' costose di quelle erogate), unbundling (separare una procedura in piu' claims), o frode diretta.</p>
+        </div>
+
+        <!-- 3c. Billing -->
+        <div class="technique-card" id="t-billing">
+            <div class="d-flex justify-content-between align-items-start">
+                <h3>3c. Billing Mismatch</h3>
+                <span class="risk-weight">Peso nel Risk Score: 10%</span>
+            </div>
+            <span class="badge bg-warning text-dark badge-section">ANALISI RELAZIONALE</span>
+
+            <p class="mt-2">Analizza le discrepanze tra il <strong>NPI di fatturazione</strong> (chi emette la fattura) e il <strong>NPI di servizio</strong> (chi eroga la prestazione). In scenari legittimi, il billing NPI puo' essere un gruppo medico o una struttura. In scenari fraudolenti, un singolo NPI puo' fatturare per decine di provider inesistenti.</p>
+
+            <h5>Indicatori</h5>
+            <ul>
+                <li><strong>Billing Hubs</strong> &mdash; NPI di fatturazione associati a molti NPI di servizio diversi. Un billing NPI con 10+ servicing NPI e' sospetto.</li>
+                <li><strong>% Mismatch</strong> &mdash; Percentuale di spesa dove billing &ne; servicing. Alta percentuale suggerisce intermediazione anomala.</li>
+                <li><strong>Curva di Lorenz</strong> &mdash; Misura la concentrazione: se pochi provider generano la maggior parte del mismatch, il pattern e' piu' sospetto.</li>
+            </ul>
+
+            <h5>Rete Billing-Servicing</h5>
+            <p>Le relazioni sono visualizzate come un grafo dove i nodi sono NPI e gli archi rappresentano fatturazioni incrociate. Nodi centrali con molte connessioni ("hub") sono potenziali punti di frode organizzata.</p>
+
+            <p><strong>Interpretazione:</strong> Il mismatch di per se' non e' illecito (es. laboratori, gruppi medici). Diventa sospetto quando combinato con alti volumi, pochi mesi di attivita', e costi anomali.</p>
+        </div>
+
+        <!-- 3d. Temporal -->
+        <div class="technique-card" id="t-temporal">
+            <div class="d-flex justify-content-between align-items-start">
+                <h3>3d. Anomalie Temporali</h3>
+                <span class="risk-weight">Peso: Spike 15% + Ghost 10% = 25%</span>
+            </div>
+            <span class="badge bg-info text-dark badge-section">ANALISI SERIE STORICHE</span>
+
+            <p class="mt-2">Quattro sotto-analisi esaminano il comportamento temporale di ogni provider:</p>
+
+            <h5>Spike Detection (peso 15%)</h5>
+            <p>Identifica aumenti improvvisi della spesa mese su mese:</p>
+            <div class="formula">
+                MoM_change = (spesa_mese_corrente &minus; spesa_mese_precedente) / spesa_mese_precedente &times; 100%
+            </div>
+            <p>Un provider con un aumento &gt;300% in un mese e' flaggato. Il sistema calcola anche uno Z-score rolling (finestra 6 mesi) per contestualizzare lo spike rispetto alla volatilita' storica del provider.</p>
+
+            <h5>Ghost Providers (peso 10%)</h5>
+            <p>Provider attivi per un periodo molto breve ma con fatturato elevato:</p>
+            <ul>
+                <li>&le; 3 mesi + &ge; $500K &rarr; Score 100 (massimo rischio)</li>
+                <li>&le; 6 mesi + &ge; $500K &rarr; Score 80</li>
+                <li>&le; 6 mesi + &ge; $100K &rarr; Score 50</li>
+                <li>&le; 12 mesi + &ge; $500K &rarr; Score 30</li>
+            </ul>
+            <p>Questo pattern ("mordi e fuggi") e' uno degli indicatori piu' forti di frode: il provider appare, fattura rapidamente importi elevati, e scompare prima che i controlli possano attivarsi.</p>
+
+            <h5>Provider Scomparsi</h5>
+            <p>Provider che hanno interrotto l'attivita' almeno 6 mesi prima della fine dei dati, con almeno $100K di fatturato e 3+ mesi di attivita'. La scomparsa improvvisa puo' indicare chiusura a seguito di indagini o fuga dopo attivita' fraudolenta.</p>
+
+            <h5>Deviazioni Stagionali</h5>
+            <p>Mesi in cui la spesa di un provider devia &gt;2 deviazioni standard dalla propria media storica. Richiede almeno 6 mesi di attivita'.</p>
+        </div>
+
+        <!-- 3e. Volume -->
+        <div class="technique-card" id="t-volume">
+            <div class="d-flex justify-content-between align-items-start">
+                <h3>3e. Anomalie di Volume</h3>
+                <span class="risk-weight">Peso: Claims/Bene 10% + Concentrazione 10% = 20%</span>
+            </div>
+            <span class="badge bg-success badge-section">ANALISI VOLUMETRICA</span>
+
+            <p class="mt-2">Due indicatori analizzano i volumi di attivita':</p>
+
+            <h5>Claims per Beneficiario (peso 10%)</h5>
+            <p>Rapporto tra il numero di claims di un provider per una procedura e la mediana della stessa procedura su tutti i provider:</p>
+            <div class="formula">
+                ratio = claims_per_beneficiario<sub>provider,HCPCS</sub> / mediana_claims_per_beneficiario<sub>HCPCS</sub>
+            </div>
+            <p>Un ratio &gt; 3x indica che il provider sta generando un numero sproporzionato di claims per beneficiario rispetto ai colleghi. Puo' indicare <strong>unbundling</strong> (suddivisione di una procedura in piu' claims separati) o <strong>phantom billing</strong> (claims per servizi mai erogati).</p>
+
+            <h5>Concentrazione di Procedura - Indice HHI (peso 10%)</h5>
+            <p>L'Herfindahl-Hirschman Index misura quanto il fatturato di un provider e' concentrato su poche procedure:</p>
+            <div class="formula">
+                HHI = &sum; (share<sub>i</sub>)<sup>2</sup>, &nbsp; dove share<sub>i</sub> = spesa_HCPCS<sub>i</sub> / spesa_totale_provider
+            </div>
+            <ul>
+                <li>HHI = 1.0 &rarr; 100% della spesa su una sola procedura</li>
+                <li>HHI &gt; 0.8 &rarr; Concentrazione estrema (sospetto)</li>
+                <li>HHI &lt; 0.25 &rarr; Diversificato (tipico di pratiche legittime)</li>
+            </ul>
+            <p>Un provider che fattura milioni su una sola procedura e' piu' sospetto di uno con un mix diversificato, specialmente se combinato con costi per claim anomali.</p>
+        </div>
+
+        <!-- 3f. Risk Score -->
+        <div class="technique-card" id="t-risk">
+            <div class="d-flex justify-content-between align-items-start">
+                <h3>3f. Risk Score Composito</h3>
+                <span class="risk-weight">Scala 0-100</span>
+            </div>
+            <span class="badge bg-dark badge-section">SCORE AGGREGATO</span>
+
+            <p class="mt-2">Ogni provider riceve un punteggio di rischio composito (0-100) che combina tutte le analisi precedenti. Ogni componente viene prima <strong>normalizzato a percentile</strong> (rank percentile 0-100 sull'intera popolazione) e poi pesato:</p>
+
+            <table class="table table-sm table-bordered mt-3">
+                <thead class="table-light">
+                    <tr><th>Componente</th><th>Peso</th><th>Metrica base</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Z-Score Severity</td><td><strong>20%</strong></td><td>MAX(|Z-score|) tra tutte le procedure</td></tr>
+                    <tr><td>Isolation Forest</td><td><strong>15%</strong></td><td>Anomaly score normalizzato</td></tr>
+                    <tr><td>Temporal Spike</td><td><strong>15%</strong></td><td>MAX spike mese-su-mese</td></tr>
+                    <tr><td>Benford Deviation</td><td>10%</td><td>MAD dalla distribuzione attesa</td></tr>
+                    <tr><td>Billing Mismatch</td><td>10%</td><td>% spesa con billing &ne; servicing</td></tr>
+                    <tr><td>Ghost Provider</td><td>10%</td><td>Heuristic (mesi &times; fatturato)</td></tr>
+                    <tr><td>Claims/Beneficiario</td><td>10%</td><td>MAX ratio vs mediana HCPCS</td></tr>
+                    <tr><td>Concentrazione (HHI)</td><td>10%</td><td>HHI del mix procedure</td></tr>
+                </tbody>
+            </table>
+
+            <div class="formula">
+                Risk Score = &sum; (peso<sub>i</sub> &times; percentile_rank<sub>i</sub>)
+            </div>
+
+            <p><strong>Soglia di alto rischio: &ge; 70/100.</strong> Provider sopra questa soglia presentano anomalie significative in piu' dimensioni contemporaneamente.</p>
+
+            <p><strong>Nota sulla normalizzazione a percentile:</strong> Un percentile di 95 significa che il provider ha un valore piu' alto del 95% della popolazione per quella metrica. Questo rende le componenti confrontabili anche se hanno scale molto diverse (es. dollari vs rapporti).</p>
+        </div>
+
+        <!-- 4. Risultati -->
+        <div class="section-divider" id="risultati"></div>
+        <h2 class="section-title">4. Principali Risultati</h2>
+
+        <div class="finding-card critical">
+            <h5>18,612 provider ad alto rischio (3.1%)</h5>
+            <p class="mb-0">Su 594,244 provider analizzati, 18,612 hanno un risk score &ge; 70, indicando anomalie consistenti su piu' dimensioni. La media del risk score e' 47.1, la mediana 47.1 &mdash; distribuzione approssimativamente normale centrata a meta' scala.</p>
+        </div>
+
+        <div class="finding-card critical">
+            <h5>Deviazione significativa dalla Legge di Benford</h5>
+            <p class="mb-0">La distribuzione globale della prima cifra devia significativamente da Benford (&chi;&sup2; = 227,151, p &asymp; 0). La cifra "1" appare il 31.4% delle volte invece del 30.1% atteso. 200 codici HCPCS e 200 provider mostrano deviazioni con MAD elevato, suggerendo pattern di importi non organici.</p>
+        </div>
+
+        <div class="finding-card">
+            <h5>200 Ghost Providers con pattern "mordi e fuggi"</h5>
+            <p class="mb-0">200 provider sono stati attivi per 6 mesi o meno con fatturati superiori a $500K. Il caso piu' eclatante: un singolo provider ha fatturato $48.3M in soli 6 mesi (luglio-dicembre 2022) prima di cessare l'attivita'.</p>
+        </div>
+
+        <div class="finding-card">
+            <h5>$320 miliardi (29.3%) in billing mismatch</h5>
+            <p class="mb-0">Il 24.5% dei provider (145,485) ha discrepanze tra NPI di fatturazione e NPI di servizio, per un totale di $320 miliardi. I top "billing hub" gestiscono relazioni con decine di NPI di servizio ciascuno.</p>
+        </div>
+
+        <div class="finding-card">
+            <h5>Provider con concentrazione estrema</h5>
+            <p class="mb-0">Numerosi provider ad alto fatturato operano su una singola procedura (HHI = 1.0) con costi per claim molto superiori alla media. Questo pattern e' consistente con upcoding sistematico o specializzazione in procedure ad alto rimborso.</p>
+        </div>
+
+        <!-- 5. Conclusioni e Ipotesi -->
+        <div class="section-divider" id="conclusioni"></div>
+        <h2 class="section-title">5. Conclusioni e Ipotesi Investigative</h2>
+
+        <p>L'analisi multidimensionale condotta su 594,244 provider e oltre $1 trilione di pagamenti Medicaid ha evidenziato pattern statisticamente anomali che, considerati nel loro complesso, delineano alcune ipotesi investigative concrete.</p>
+
+        <h4 class="mt-4">Ipotesi 1: Rete organizzata di fatturazione fittizia tramite Billing Hub</h4>
+        <div class="technique-card">
+            <p>Il provider con il maggior numero di NPI di servizio associati (NPI 1679525919) gestisce <strong>5,716 NPI servicing</strong> per un totale di <strong>$863 milioni</strong> di fatturato. I primi 3 billing hub da soli canalizzano oltre <strong>$1.37 miliardi</strong>.</p>
+            <p>Il 24.5% dei provider (145,485) presenta discrepanze tra NPI di fatturazione e NPI di servizio, per un totale di <strong>$320 miliardi</strong> (29.3% della spesa totale). Il 35.3% dei claim totali transita attraverso questi canali.</p>
+            <p><strong>Ipotesi:</strong> Alcuni billing hub potrebbero fungere da "shell entity" che aggregano fatturazioni per conto di provider fittizi o inesistenti. Il numero abnorme di NPI servicing associati a un singolo NPI billing suggerisce un modello organizzativo progettato per frammentare e rendere meno visibile il volume di fatturazione complessivo. Questo schema e' coerente con pattern documentati di <em>billing mill fraud</em>.</p>
+            <p class="mb-0"><strong>Azione suggerita:</strong> Verifica incrociata dei top 200 billing hub con il registro NPPES per accertare che gli NPI servicing corrispondano a professionisti reali e attivi, con indirizzo fisico verificabile.</p>
+        </div>
+
+        <h4 class="mt-4">Ipotesi 2: "Ghost Providers" con schema mordi-e-fuggi</h4>
+        <div class="technique-card">
+            <p>200 provider sono stati attivi per <strong>6 mesi o meno</strong> con fatturati superiori a $500K. Il caso piu' significativo: NPI 1922733641 ha fatturato <strong>$48.3 milioni in 6 mesi</strong> (luglio-dicembre 2022, costo medio per claim: $666) prima di cessare l'attivita'. Un secondo provider (NPI 1215634928) ha fatturato $22.3 milioni in 6 mesi.</p>
+            <p><strong>Ipotesi:</strong> Il pattern "alta intensita' in finestra temporale breve seguita da cessazione improvvisa" e' un indicatore classico di <em>phantom billing</em>. Il provider viene registrato, fattura intensamente per pochi mesi &mdash; tipicamente sotto la soglia di audit annuale &mdash; e poi scompare prima che i controlli possano attivarsi. La concentrazione di molti ghost provider nel periodo 2022-2023 suggerisce un possibile pattern sistematico piuttosto che casi isolati.</p>
+            <p class="mb-0"><strong>Azione suggerita:</strong> Analisi dei beneficiari associati a questi provider per verificare se gli stessi pazienti compaiono anche sotto altri NPI ghost, il che indicherebbe un circuito di <em>patient recycling</em>.</p>
+        </div>
+
+        <h4 class="mt-4">Ipotesi 3: Upcoding sistematico su procedure ad alto rimborso</h4>
+        <div class="technique-card">
+            <p>Provider con indice di concentrazione HHI prossimo a 1.0 (mono-procedura) generano fatturati nell'ordine dei <strong>miliardi</strong>: NPI 1376609297 ha un HHI di 0.96 con $5.57 miliardi su essenzialmente una sola procedura. I top 3 provider per concentrazione fatturano complessivamente $10.28 miliardi.</p>
+            <p>Parallelamente, l'analisi Z-Score e IQR identifica migliaia di outlier per le procedure T1019, T1015, T2016 e 99213 &mdash; procedure frequentemente associate a <em>home health services</em> e visite ambulatoriali.</p>
+            <p><strong>Ipotesi:</strong> La combinazione di concentrazione estrema su una singola procedura e costo medio per claim significativamente superiore alla media di quella procedura e' consistente con <em>upcoding</em> (fatturazione di una procedura a un livello di complessita'/rimborso superiore a quello effettivo) o con <em>unbundling</em> (scomposizione di un servizio in piu' claim separati per massimizzare il rimborso).</p>
+            <p class="mb-0"><strong>Azione suggerita:</strong> Confronto dei codici HCPCS fatturati da questi provider con la loro specializzazione medica registrata. Un dermatologo che fattura esclusivamente procedure cardiovascolari ad alto costo, ad esempio, costituirebbe una "red flag" inequivocabile.</p>
+        </div>
+
+        <h4 class="mt-4">Ipotesi 4: Manipolazione degli importi (deviazione Benford)</h4>
+        <div class="technique-card">
+            <p>La distribuzione globale della prima cifra devia significativamente dalla Legge di Benford (&chi;&sup2; = 227,151, p &asymp; 0). I 200 provider con la maggiore deviazione (MAD > 0.19) mostrano distribuzioni della prima cifra radicalmente diverse da quelle attese, con sovra-rappresentazione di cifre specifiche.</p>
+            <p><strong>Ipotesi:</strong> Importi inventati o manipolati tendono a non seguire la distribuzione naturale di Benford. Un provider che fattura importi ripetitivi (es. sempre $999, $4,500, $8,000) genera una distribuzione della prima cifra "piatta" o concentrata, nettamente distinguibile da una distribuzione organica. Questo pattern e' particolarmente rilevante quando coincide con altri indicatori di rischio (ghost provider, alta concentrazione, spike temporali).</p>
+            <p class="mb-0"><strong>Azione suggerita:</strong> Audit dei claim grezzi per i provider con MAD > 0.15 per verificare la presenza di importi ripetitivi, arrotondamenti sospetti, o cluster di importi identici.</p>
+        </div>
+
+        <h4 class="mt-4">Ipotesi 5: Convergenza multi-dimensionale come prioritizzazione</h4>
+        <div class="technique-card">
+            <p>Il provider a piu' alto rischio (NPI 1972688919, score 89.8/100) presenta anomalie <strong>su tutte le 8 dimensioni contemporaneamente</strong>: Benford (69.5), Z-Score (98.2), Isolation Forest (99.4), Billing Mismatch (87.4), Spike Temporale (93.8), Ghost Provider (99.4), Claims/Beneficiario (95.3), Concentrazione (60.1). Il suo fatturato totale e' di $52.1 milioni.</p>
+            <p>I top 5 provider per risk score hanno tutti score superiore a 88.9 e cumulano un fatturato di circa $145 milioni.</p>
+            <p><strong>Conclusione:</strong> La probabilita' che un singolo provider risulti anomalo su 8 dimensioni indipendenti per puro caso e' estremamente bassa. La convergenza di indicatori multipli costituisce la base piu' solida per la prioritizzazione degli audit. I 18,612 provider con score &ge; 70 (3.1% del totale) dovrebbero essere l'obiettivo primario di investigazioni approfondite.</p>
+            <p class="mb-0"><strong>Stima impatto potenziale:</strong> Se anche solo il 10% dei $320 miliardi in billing mismatch fosse riconducibile a fatturazione impropria, si tratterebbe di circa <strong>$32 miliardi</strong> di potenziale spreco o frode.</p>
+        </div>
+
+        <!-- 6. Limiti -->
+        <div class="section-divider" id="limiti"></div>
+        <h2 class="section-title">6. Limiti dell'Analisi</h2>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="technique-card" style="border-left-color: #6c757d;">
+                    <h5>Cosa questa analisi NON e'</h5>
+                    <ul class="mb-0">
+                        <li><strong>Non e' una prova di frode.</strong> Ogni anomalia statistica puo' avere spiegazioni legittime: un provider mono-procedura potrebbe essere un centro specializzato; un ghost provider potrebbe aver semplicemente chiuso l'attivita'; un billing hub potrebbe essere un legittimo gruppo ospedaliero.</li>
+                        <li><strong>Non considera variabili cliniche.</strong> L'analisi si basa esclusivamente su dati di fatturazione aggregati. Non abbiamo accesso a diagnosi, cartelle cliniche, o outcome dei pazienti.</li>
+                        <li><strong>I dati sono aggregati per provider-procedura-mese.</strong> Non abbiamo visibilita' sul singolo claim o sul singolo beneficiario, il che limita la granularita' dell'analisi.</li>
+                        <li><strong>La Legge di Benford ha limiti noti.</strong> Non si applica a distribuzioni troncate, valori con range limitato, o dati con molti zeri. Alcuni codici HCPCS hanno tariffe fisse che naturalmente deviano da Benford.</li>
+                        <li><strong>I pesi del risk score sono basati su letteratura e giudizio esperto</strong>, non su un modello supervisionato con casi di frode confermata. Un dataset di frodi accertate consentirebbe di calibrare i pesi in modo ottimale.</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 7. Navigazione -->
+        <div class="section-divider" id="navigazione"></div>
+        <h2 class="section-title">7. Navigazione delle Analisi</h2>
+        <p>Ogni pagina del sito presenta i dati pre-calcolati con grafici interattivi (Plotly.js) e tabelle navigabili con ricerca e ordinamento (DataTables).</p>
+
+        <div class="row g-3 mt-2">
+            <div class="col-md-3"><a class="nav-card" href="overview.html"><h5>Overview</h5><p>KPI, trend mensile, top HCPCS, top provider a rischio</p></a></div>
+            <div class="col-md-3"><a class="nav-card" href="benford.html"><h5>Benford</h5><p>Distribuzione prima cifra, deviazioni per HCPCS e provider</p></a></div>
+            <div class="col-md-3"><a class="nav-card" href="outliers.html"><h5>Outliers</h5><p>Z-Score e IQR outliers per procedura</p></a></div>
+            <div class="col-md-3"><a class="nav-card" href="billing.html"><h5>Billing</h5><p>Mismatch, billing hubs, rete, curva di Lorenz</p></a></div>
+            <div class="col-md-3"><a class="nav-card" href="temporal.html"><h5>Temporale</h5><p>Spike, ghost, scomparsi, deviazioni stagionali</p></a></div>
+            <div class="col-md-3"><a class="nav-card" href="volume.html"><h5>Volume</h5><p>Claims/beneficiario, concentrazione HHI</p></a></div>
+            <div class="col-md-3"><a class="nav-card" href="risk.html"><h5>Risk Score</h5><p>Distribuzione, composizione, correlazione</p></a></div>
+            <div class="col-md-3"><a class="nav-card" href="provider.html"><h5>Provider Detail</h5><p>Drill-down sui top 50 provider a rischio</p></a></div>
+        </div>
+
+        <hr class="mt-5">
+        <p class="text-muted small">Analisi eseguita su dati CMS Medicaid Provider Spending. I risultati sono indicatori statistici e non costituiscono prova di frode. Ogni anomalia richiede indagini approfondite per determinare se rappresenta attivita' illecita o ha spiegazioni legittime.</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+    (async function() {
+        const kpi = await App.fetchData('overview/kpi.json');
+        if (kpi) {
+            document.getElementById('stat-spend').textContent = App.fmtCurrency(kpi.total_paid);
+            document.getElementById('stat-providers').textContent = App.fmtNum(kpi.total_providers);
+            document.getElementById('stat-claims').textContent = App.fmtCurrency(kpi.total_claims).replace('$','') + ' claims';
+            document.getElementById('stat-risk').textContent = App.fmtNum(kpi.high_risk_providers);
+        }
+    })();
+    </script>
+</body>
+</html>

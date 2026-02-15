@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provider Detail - Medicaid Fraud Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">Medicaid Fraud Detection</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navMain">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Metodologia</a></li>
+                    <li class="nav-item"><a class="nav-link" href="overview.html">Overview</a></li>
+                    <li class="nav-item"><a class="nav-link" href="benford.html">Benford</a></li>
+                    <li class="nav-item"><a class="nav-link" href="outliers.html">Outliers</a></li>
+                    <li class="nav-item"><a class="nav-link" href="billing.html">Billing</a></li>
+                    <li class="nav-item"><a class="nav-link" href="temporal.html">Temporale</a></li>
+                    <li class="nav-item"><a class="nav-link" href="volume.html">Volume</a></li>
+                    <li class="nav-item"><a class="nav-link" href="risk.html">Risk Score</a></li>
+                    <li class="nav-item"><a class="nav-link" href="provider.html">Provider</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 py-3">
+        <div class="page-header">
+            <h1>Dettaglio Provider</h1>
+            <p>Analisi approfondita dei top 50 provider a rischio</p>
+        </div>
+
+        <!-- Provider selector -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <label for="npi-select" class="form-label fw-bold">Seleziona Provider NPI:</label>
+                <select id="npi-select" class="form-select provider-search">
+                    <option value="">Caricamento...</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Provider content (hidden until selected) -->
+        <div id="provider-content" style="display:none">
+            <!-- Summary KPIs -->
+            <div id="kpi-row" class="row g-3 mb-4"></div>
+
+            <!-- Risk Score Breakdown -->
+            <h2 class="section-title">Risk Score Breakdown</h2>
+            <div class="row">
+                <div class="col-lg-5">
+                    <div class="chart-container" id="chart-radar"></div>
+                </div>
+                <div class="col-lg-7">
+                    <div id="risk-details" class="chart-container p-3"></div>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <h2 class="section-title">Timeline Mensile</h2>
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="chart-container" id="chart-timeline-paid"></div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="chart-container" id="chart-timeline-claims"></div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="chart-container" id="chart-timeline-bene"></div>
+                </div>
+            </div>
+
+            <!-- Procedure Breakdown -->
+            <h2 class="section-title">Breakdown Procedure</h2>
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="chart-container chart-md" id="chart-hcpcs"></div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="table-container" id="table-hcpcs"></div>
+                </div>
+            </div>
+
+            <!-- Benford -->
+            <h2 class="section-title">Analisi Benford</h2>
+            <div class="chart-container chart-md" id="chart-benford"></div>
+
+            <!-- Network -->
+            <h2 class="section-title">Rete Billing-Servicing</h2>
+            <div id="mismatch-info" class="mb-3"></div>
+            <div class="chart-container chart-md" id="chart-network"></div>
+        </div>
+
+        <div id="no-selection" class="text-center text-muted py-5">
+            <h4>Seleziona un provider dal menu per visualizzarne il dettaglio</h4>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/tables.js"></script>
+    <script>
+    let currentDT = null;
+
+    async function loadProvider(npi) {
+        if (!npi) {
+            document.getElementById('provider-content').style.display = 'none';
+            document.getElementById('no-selection').style.display = 'block';
+            return;
+        }
+
+        const data = await App.fetchData(`providers/${npi}.json`);
+        if (!data) {
+            App.showError('provider-content', 'Dati non disponibili per questo provider');
+            return;
+        }
+
+        document.getElementById('no-selection').style.display = 'none';
+        document.getElementById('provider-content').style.display = 'block';
+
+        // Summary KPIs
+        const s = data.summary || {};
+        document.getElementById('kpi-row').innerHTML = [
+            App.kpiCard('Spesa Totale', App.fmtCurrency(s.total_paid)),
+            App.kpiCard('Claims', App.fmtNum(s.total_claims)),
+            App.kpiCard('Beneficiari', App.fmtNum(s.total_beneficiaries)),
+            App.kpiCard('Procedure HCPCS', App.fmtNum(s.num_hcpcs)),
+            App.kpiCard('Mesi Attivi', App.fmtNum(s.num_months)),
+        ].join('');
+
+        // Risk radar
+        const risk = data.risk || {};
+        const riskComponents = [
+            { key: 'benford_score', label: 'Benford' },
+            { key: 'zscore_severity', label: 'Z-Score' },
+            { key: 'isolation_forest_score', label: 'Isolation Forest' },
+            { key: 'billing_mismatch_score', label: 'Mismatch' },
+            { key: 'temporal_spike_score', label: 'Spike' },
+            { key: 'ghost_provider_score', label: 'Ghost' },
+            { key: 'claims_per_bene_score', label: 'Claims/Bene' },
+            { key: 'concentration_score', label: 'Concentrazione' },
+        ];
+        Charts.radarChart('chart-radar',
+            riskComponents.map(c => c.label),
+            riskComponents.map(c => risk[c.key] || 0),
+            `Risk Score: ${App.fmtFloat(risk.total_risk_score || 0, 1)}`
+        );
+
+        // Risk detail cards
+        let detailHtml = '<div class="row g-2">';
+        detailHtml += `<div class="col-12"><h5>Score Totale: <span class="text-danger fw-bold">${App.fmtFloat(risk.total_risk_score || 0, 1)}/100</span></h5></div>`;
+        riskComponents.forEach(c => {
+            const val = risk[c.key] || 0;
+            const barClass = val >= 70 ? 'bg-danger' : val >= 40 ? 'bg-warning' : 'bg-success';
+            detailHtml += `<div class="col-6">
+                <div class="mb-1"><small class="fw-bold">${c.label}</small> <small class="float-end">${App.fmtFloat(val, 1)}</small></div>
+                <div class="progress" style="height:8px"><div class="progress-bar ${barClass}" style="width:${val}%"></div></div>
+            </div>`;
+        });
+        detailHtml += '</div>';
+        document.getElementById('risk-details').innerHTML = detailHtml;
+
+        // Timeline
+        const tl = data.timeline || [];
+        if (tl.length) {
+            Charts.lineChart('chart-timeline-paid', tl, 'CLAIM_FROM_MONTH', 'total_paid', 'Spesa Mensile');
+            Charts.lineChart('chart-timeline-claims', tl, 'CLAIM_FROM_MONTH', 'total_claims', 'Claims Mensili');
+            Charts.lineChart('chart-timeline-bene', tl, 'CLAIM_FROM_MONTH', 'total_beneficiaries', 'Beneficiari Mensili');
+        }
+
+        // HCPCS breakdown
+        const hcpcs = data.hcpcs || [];
+        if (hcpcs.length) {
+            const top15 = hcpcs.slice(0, 15);
+            Charts.barChart('chart-hcpcs', top15, 'HCPCS_CODE', 'total_paid', 'Top Procedure per Spesa', true);
+            if (currentDT) { currentDT.destroy(); currentDT = null; }
+            currentDT = Tables.render('table-hcpcs', hcpcs, [
+                'HCPCS_CODE', 'total_paid', 'total_claims', 'cost_per_claim',
+                'claims_per_beneficiary', 'share',
+            ]);
+        }
+
+        // Benford
+        const benford = data.benford || [];
+        if (benford.length) {
+            Charts.benfordChart('chart-benford', benford);
+        } else {
+            document.getElementById('chart-benford').innerHTML = '<p class="text-muted text-center">Dati Benford non disponibili</p>';
+        }
+
+        // Mismatch info
+        const mm = data.mismatch || {};
+        if (mm.BILLING_PROVIDER_NPI_NUM) {
+            document.getElementById('mismatch-info').innerHTML = `
+                <div class="row g-3">
+                    ${App.kpiCard('NPI Servicing', App.fmtNum(mm.num_servicing_npis))}
+                    ${App.kpiCard('% Mismatch Spesa', App.fmtPct(mm.pct_mismatch_paid))}
+                    ${App.kpiCard('Mismatch $', App.fmtCurrency(mm.mismatch_paid))}
+                </div>`;
+        } else {
+            document.getElementById('mismatch-info').innerHTML = '';
+        }
+
+        // Network
+        Charts.networkGraph('chart-network', data.network || { nodes: [], edges: [] },
+            'Rete Billing-Servicing del Provider');
+    }
+
+    (async function() {
+        // Load provider index
+        const idx = await App.fetchData('providers/index.json');
+        const select = document.getElementById('npi-select');
+        if (idx && idx.npis) {
+            select.innerHTML = '<option value="">-- Seleziona NPI --</option>';
+            idx.npis.forEach(npi => {
+                select.innerHTML += `<option value="${npi}">${npi}</option>`;
+            });
+        }
+
+        select.addEventListener('change', () => loadProvider(select.value));
+
+        // Check URL hash for pre-selected NPI
+        const hash = window.location.hash.replace('#', '');
+        if (hash && idx && idx.npis && idx.npis.includes(hash)) {
+            select.value = hash;
+            loadProvider(hash);
+        }
+    })();
+    </script>
+</body>
+</html>

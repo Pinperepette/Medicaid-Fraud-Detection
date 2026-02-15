@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temporal Anomalies - Medicaid Fraud Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">Medicaid Fraud Detection</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navMain">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Metodologia</a></li>
+                    <li class="nav-item"><a class="nav-link" href="overview.html">Overview</a></li>
+                    <li class="nav-item"><a class="nav-link" href="benford.html">Benford</a></li>
+                    <li class="nav-item"><a class="nav-link" href="outliers.html">Outliers</a></li>
+                    <li class="nav-item"><a class="nav-link" href="billing.html">Billing</a></li>
+                    <li class="nav-item"><a class="nav-link" href="temporal.html">Temporale</a></li>
+                    <li class="nav-item"><a class="nav-link" href="volume.html">Volume</a></li>
+                    <li class="nav-item"><a class="nav-link" href="risk.html">Risk Score</a></li>
+                    <li class="nav-item"><a class="nav-link" href="provider.html">Provider</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 py-3">
+        <div class="page-header">
+            <h1>Anomalie Temporali</h1>
+            <p>Rilevamento di picchi improvvisi, provider fantasma, scomparsi e deviazioni stagionali</p>
+        </div>
+
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-spikes">Spike</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-ghosts">Ghost Provider</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-disappeared">Scomparsi</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-seasonal">Stagionalita</a></li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Spikes -->
+            <div class="tab-pane fade show active" id="tab-spikes">
+                <div class="chart-container chart-md" id="chart-spikes"></div>
+                <div class="table-container" id="table-spikes"></div>
+            </div>
+
+            <!-- Ghost Providers -->
+            <div class="tab-pane fade" id="tab-ghosts">
+                <div class="chart-container chart-md" id="chart-ghosts"></div>
+                <div class="table-container" id="table-ghosts"></div>
+            </div>
+
+            <!-- Disappeared -->
+            <div class="tab-pane fade" id="tab-disappeared">
+                <div class="table-container" id="table-disappeared"></div>
+            </div>
+
+            <!-- Seasonal -->
+            <div class="tab-pane fade" id="tab-seasonal">
+                <div class="chart-container chart-md" id="chart-seasonal"></div>
+                <div class="table-container" id="table-seasonal"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/tables.js"></script>
+    <script>
+    (async function() {
+        // Spikes
+        const spikes = await App.fetchData('temporal/spikes.json');
+        if (spikes && spikes.length) {
+            Charts.scatterChart('chart-spikes', spikes, 'total_paid', 'mom_change_pct',
+                'Spike Mensili: Spesa vs Variazione %', {
+                    color: 'rolling_zscore',
+                    hover: ['BILLING_PROVIDER_NPI_NUM', 'CLAIM_FROM_MONTH'],
+                    logX: true,
+                });
+            Tables.render('table-spikes', spikes, [
+                'BILLING_PROVIDER_NPI_NUM', 'CLAIM_FROM_MONTH', 'total_paid',
+                'prev_paid', 'mom_change_pct', 'rolling_zscore',
+            ], { order: [[4, 'desc']] });
+        }
+
+        // Ghosts
+        const ghosts = await App.fetchData('temporal/ghosts.json');
+        if (ghosts && ghosts.length) {
+            Charts.scatterChart('chart-ghosts', ghosts, 'num_months', 'total_paid',
+                'Ghost Provider: Mesi Attivi vs Spesa', {
+                    hover: ['BILLING_PROVIDER_NPI_NUM', 'first_month', 'last_month'],
+                    logY: true,
+                });
+            Tables.render('table-ghosts', ghosts, [
+                'BILLING_PROVIDER_NPI_NUM', 'num_months', 'total_paid',
+                'total_claims', 'first_month', 'last_month', 'avg_cost_per_claim',
+            ], { order: [[2, 'desc']] });
+        }
+
+        // Disappeared
+        const disappeared = await App.fetchData('temporal/disappeared.json');
+        if (disappeared && disappeared.length) {
+            Tables.render('table-disappeared', disappeared, [
+                'BILLING_PROVIDER_NPI_NUM', 'last_month', 'first_month',
+                'months_since_last', 'total_paid', 'total_claims', 'num_months',
+            ], { order: [[3, 'desc']] });
+        }
+
+        // Seasonal
+        const seasonal = await App.fetchData('temporal/seasonal.json');
+        if (seasonal && seasonal.length) {
+            Charts.scatterChart('chart-seasonal', seasonal, 'CLAIM_FROM_MONTH', 'zscore',
+                'Deviazioni Stagionali (|Z| > 2)', {
+                    color: 'zscore',
+                    hover: ['BILLING_PROVIDER_NPI_NUM', 'total_paid'],
+                });
+            Tables.render('table-seasonal', seasonal, [
+                'BILLING_PROVIDER_NPI_NUM', 'CLAIM_FROM_MONTH', 'total_paid',
+                'avg_paid', 'zscore',
+            ], { order: [[4, 'desc']] });
+        }
+    })();
+    </script>
+</body>
+</html>
