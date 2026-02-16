@@ -1,65 +1,71 @@
 /* DataTables wrapper with formatting */
 
 const Tables = {
-    // Column display name mapping (Italian)
-    LABELS: {
-        'BILLING_PROVIDER_NPI_NUM': 'NPI Billing',
-        'SERVICING_PROVIDER_NPI_NUM': 'NPI Servicing',
-        'HCPCS_CODE': 'Codice HCPCS',
-        'CLAIM_FROM_MONTH': 'Mese',
-        'total_paid': 'Spesa Totale',
-        'total_claims': 'Claims Totali',
-        'total_beneficiaries': 'Beneficiari',
-        'total_records': 'Record Totali',
-        'num_providers': 'N. Provider',
-        'num_hcpcs': 'N. Procedure',
-        'num_months': 'N. Mesi',
-        'num_servicing_npis': 'N. NPI Servicing',
-        'cost_per_claim': 'Costo/Claim',
-        'cost_per_beneficiary': 'Costo/Beneficiario',
-        'claims_per_beneficiary': 'Claims/Beneficiario',
-        'avg_cost_per_claim': 'Media Costo/Claim',
-        'std_cost_per_claim': 'Std Costo/Claim',
-        'z_cost_per_claim': 'Z-Score Costo/Claim',
-        'z_cost_per_beneficiary': 'Z-Score Costo/Bene',
-        'mad': 'MAD',
-        'chi2': 'Chi-Quadro',
-        'p_value': 'P-Value',
-        'total_risk_score': 'Risk Score',
-        'benford_score': 'Benford',
-        'zscore_severity': 'Z-Score',
-        'isolation_forest_score': 'Isolation Forest',
-        'billing_mismatch_score': 'Mismatch',
-        'temporal_spike_score': 'Spike',
-        'ghost_provider_score': 'Ghost',
-        'claims_per_bene_score': 'Claims/Bene',
-        'concentration_score': 'Concentrazione',
-        'pct_mismatch_paid': '% Mismatch $',
-        'pct_mismatch_claims': '% Mismatch Claims',
-        'mismatch_paid': 'Mismatch $',
-        'mismatch_claims': 'Mismatch Claims',
-        'mom_change_pct': 'Variazione MoM %',
-        'rolling_zscore': 'Z-Score Rolling',
-        'hhi': 'HHI',
-        'max_share': 'Max Share',
-        'top_hcpcs': 'HCPCS Principale',
-        'ratio_to_median': 'Rapporto vs Mediana',
-        'first_month': 'Primo Mese',
-        'last_month': 'Ultimo Mese',
-        'months_since_last': 'Mesi Inattivo',
-        'zscore': 'Z-Score',
-        'avg_paid': 'Media Spesa',
-        'std_paid': 'Std Spesa',
-        'z_outlier_count': 'N. Outlier Z',
-        'iqr_outlier_count': 'N. Outlier IQR',
-        'share': 'Quota %',
-        'observed_pct': '% Osservato',
-        'expected_pct': '% Atteso',
-        'deviation': 'Deviazione',
-        'prev_paid': 'Spesa Prec.',
-        'rolling_avg': 'Media Rolling',
-        'avg_cost_per_claim_y': 'Media Costo/Claim',
-        'data_end': 'Fine Dati',
+    // Column field name to i18n key mapping
+    COL_KEYS: {
+        'BILLING_PROVIDER_NPI_NUM': 'col.billing_npi',
+        'SERVICING_PROVIDER_NPI_NUM': 'col.servicing_npi',
+        'HCPCS_CODE': 'col.hcpcs',
+        'CLAIM_FROM_MONTH': 'col.month',
+        'total_paid': 'col.total_paid',
+        'total_claims': 'col.total_claims',
+        'total_beneficiaries': 'col.total_beneficiaries',
+        'total_records': 'col.total_records',
+        'num_providers': 'col.num_providers',
+        'num_hcpcs': 'col.num_hcpcs',
+        'num_months': 'col.num_months',
+        'num_servicing_npis': 'col.num_servicing_npis',
+        'cost_per_claim': 'col.cost_per_claim',
+        'cost_per_beneficiary': 'col.cost_per_beneficiary',
+        'claims_per_beneficiary': 'col.claims_per_beneficiary',
+        'avg_cost_per_claim': 'col.avg_cost_per_claim',
+        'std_cost_per_claim': 'col.std_cost_per_claim',
+        'z_cost_per_claim': 'col.z_cost_per_claim',
+        'z_cost_per_beneficiary': 'col.z_cost_per_beneficiary',
+        'mad': 'col.mad',
+        'chi2': 'col.chi2',
+        'p_value': 'col.p_value',
+        'total_risk_score': 'col.total_risk_score',
+        'benford_score': 'col.benford_score',
+        'zscore_severity': 'col.zscore_severity',
+        'isolation_forest_score': 'col.isolation_forest_score',
+        'billing_mismatch_score': 'col.billing_mismatch_score',
+        'temporal_spike_score': 'col.temporal_spike_score',
+        'ghost_provider_score': 'col.ghost_provider_score',
+        'claims_per_bene_score': 'col.claims_per_bene_score',
+        'concentration_score': 'col.concentration_score',
+        'pct_mismatch_paid': 'col.pct_mismatch_paid',
+        'pct_mismatch_claims': 'col.pct_mismatch_claims',
+        'mismatch_paid': 'col.mismatch_paid',
+        'mismatch_claims': 'col.mismatch_claims',
+        'mom_change_pct': 'col.mom_change_pct',
+        'rolling_zscore': 'col.rolling_zscore',
+        'hhi': 'col.hhi',
+        'max_share': 'col.max_share',
+        'top_hcpcs': 'col.top_hcpcs',
+        'ratio_to_median': 'col.ratio_to_median',
+        'first_month': 'col.first_month',
+        'last_month': 'col.last_month',
+        'months_since_last': 'col.months_since_last',
+        'zscore': 'col.zscore',
+        'avg_paid': 'col.avg_paid',
+        'std_paid': 'col.std_paid',
+        'z_outlier_count': 'col.z_outlier_count',
+        'iqr_outlier_count': 'col.iqr_outlier_count',
+        'share': 'col.share',
+        'observed_pct': 'col.observed_pct',
+        'expected_pct': 'col.expected_pct',
+        'deviation': 'col.deviation',
+        'prev_paid': 'col.prev_paid',
+        'rolling_avg': 'col.rolling_avg',
+        'avg_cost_per_claim_y': 'col.avg_cost_per_claim_y',
+        'data_end': 'col.data_end',
+    },
+
+    // Get translated label for a column
+    getLabel(col) {
+        const key = this.COL_KEYS[col];
+        return key ? I18n.t(key) : col;
     },
 
     // Columns that should be formatted as currency
@@ -97,7 +103,7 @@ const Tables = {
     render(containerId, data, columns = null, opts = {}) {
         const el = document.getElementById(containerId);
         if (!el || !data || data.length === 0) {
-            if (el) el.innerHTML = '<p class="text-muted">Nessun dato disponibile</p>';
+            if (el) el.innerHTML = `<p class="text-muted">${I18n.t('noData')}</p>`;
             return null;
         }
 
@@ -111,7 +117,7 @@ const Tables = {
         let html = `<table id="${tableId}" class="table table-sm table-striped table-hover" style="width:100%">`;
         html += '<thead><tr>';
         columns.forEach(col => {
-            html += `<th>${this.LABELS[col] || col}</th>`;
+            html += `<th>${this.getLabel(col)}</th>`;
         });
         html += '</tr></thead><tbody>';
 
@@ -131,12 +137,7 @@ const Tables = {
         const dtOpts = Object.assign({
             pageLength: 25,
             order: [],
-            language: {
-                search: 'Cerca:',
-                lengthMenu: 'Mostra _MENU_ righe',
-                info: '_START_ - _END_ di _TOTAL_',
-                paginate: { first: 'Prima', last: 'Ultima', next: '>', previous: '<' },
-            },
+            language: I18n.dtLanguage(),
             dom: 'lfrtip',
         }, opts);
 

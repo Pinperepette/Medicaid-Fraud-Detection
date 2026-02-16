@@ -28,6 +28,20 @@ body {
     font-weight: 600;
 }
 
+/* Language toggle */
+.lang-toggle {
+    font-weight: 700;
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 4px;
+    padding: 0.25rem 0.6rem !important;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+}
+.lang-toggle:hover {
+    border-color: #fff;
+    background: rgba(255,255,255,0.1);
+}
+
 /* KPI Cards */
 .kpi-card {
     background: #fff;

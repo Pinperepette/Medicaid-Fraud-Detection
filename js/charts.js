@@ -100,19 +100,19 @@ const Charts = {
 
         const trace1 = {
             x: digits, y: observed,
-            type: 'bar', name: 'Osservato',
+            type: 'bar', name: I18n.t('chart.observed'),
             marker: { color: 'steelblue' },
         };
         const trace2 = {
             x: digits, y: expected,
             type: 'scatter', mode: 'lines+markers',
-            name: 'Benford atteso',
+            name: I18n.t('chart.expected'),
             line: { color: 'red', width: 2 },
         };
         Plotly.newPlot(containerId, [trace1, trace2], App.plotlyLayout(
-            'Distribuzione Prima Cifra vs Legge di Benford', {
-                xaxis: { title: 'Prima Cifra' },
-                yaxis: { title: 'Frequenza Relativa' },
+            I18n.t('chart.benford.title'), {
+                xaxis: { title: I18n.t('chart.benford.xaxis') },
+                yaxis: { title: I18n.t('chart.benford.yaxis') },
                 barmode: 'group',
             }
         ), App.plotlyConfig);
@@ -131,12 +131,12 @@ const Charts = {
             x: [0, 100], y: [0, 100],
             type: 'scatter', mode: 'lines',
             line: { color: 'red', dash: 'dash' },
-            name: 'Uguaglianza perfetta',
+            name: I18n.t('chart.lorenz.equality'),
         };
         Plotly.newPlot(containerId, [trace1, trace2], App.plotlyLayout(
-            'Curva di Lorenz - Concentrazione Mismatch', {
-                xaxis: { title: '% Cumulativa Provider' },
-                yaxis: { title: '% Cumulativa Importo Mismatch' },
+            I18n.t('chart.lorenz.title'), {
+                xaxis: { title: I18n.t('chart.lorenz.xaxis') },
+                yaxis: { title: I18n.t('chart.lorenz.yaxis') },
             }
         ), App.plotlyConfig);
     },
@@ -155,9 +155,10 @@ const Charts = {
         }), App.plotlyConfig);
     },
 
-    networkGraph(containerId, networkData, title = 'Rete Billing-Servicing') {
+    networkGraph(containerId, networkData, title) {
+        title = title || I18n.t('chart.network.title');
         if (!networkData || !networkData.nodes || networkData.nodes.length === 0) {
-            document.getElementById(containerId).innerHTML = '<p class="text-muted text-center">Nessun dato di rete disponibile</p>';
+            document.getElementById(containerId).innerHTML = `<p class="text-muted text-center">${I18n.t('noNetworkData')}</p>`;
             return;
         }
 
@@ -188,12 +189,12 @@ const Charts = {
             y: nodes.map(n => n.y),
             type: 'scatter', mode: 'markers',
             hoverinfo: 'text',
-            text: nodes.map(n => `NPI: ${n.id}<br>Connessioni: ${n.degree}`),
+            text: nodes.map(n => `NPI: ${n.id}<br>${I18n.t('chart.network.connections')}: ${n.degree}`),
             marker: {
                 size: nodes.map(n => Math.max(5, Math.min(30, n.degree * 3))),
                 color: nodes.map(n => n.degree),
                 colorscale: 'YlOrRd',
-                colorbar: { title: 'Connessioni' },
+                colorbar: { title: I18n.t('chart.network.connections') },
             },
         };
 

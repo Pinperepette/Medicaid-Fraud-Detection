@@ -17,15 +17,18 @@
             </button>
             <div class="collapse navbar-collapse" id="navMain">
                 <ul class="navbar-nav">
-                    <li class="nav-item"><a class="nav-link" href="index.html">Metodologia</a></li>
-                    <li class="nav-item"><a class="nav-link" href="overview.html">Overview</a></li>
-                    <li class="nav-item"><a class="nav-link" href="benford.html">Benford</a></li>
-                    <li class="nav-item"><a class="nav-link" href="outliers.html">Outliers</a></li>
-                    <li class="nav-item"><a class="nav-link" href="billing.html">Billing</a></li>
-                    <li class="nav-item"><a class="nav-link" href="temporal.html">Temporale</a></li>
-                    <li class="nav-item"><a class="nav-link" href="volume.html">Volume</a></li>
-                    <li class="nav-item"><a class="nav-link" href="risk.html">Risk Score</a></li>
-                    <li class="nav-item"><a class="nav-link" href="provider.html">Provider</a></li>
+                    <li class="nav-item"><a class="nav-link" href="index.html" data-i18n="nav.methodology">Metodologia</a></li>
+                    <li class="nav-item"><a class="nav-link" href="overview.html" data-i18n="nav.overview">Overview</a></li>
+                    <li class="nav-item"><a class="nav-link" href="benford.html" data-i18n="nav.benford">Benford</a></li>
+                    <li class="nav-item"><a class="nav-link" href="outliers.html" data-i18n="nav.outliers">Outliers</a></li>
+                    <li class="nav-item"><a class="nav-link" href="billing.html" data-i18n="nav.billing">Billing</a></li>
+                    <li class="nav-item"><a class="nav-link" href="temporal.html" data-i18n="nav.temporal">Temporale</a></li>
+                    <li class="nav-item"><a class="nav-link" href="volume.html" data-i18n="nav.volume">Volume</a></li>
+                    <li class="nav-item"><a class="nav-link" href="risk.html" data-i18n="nav.risk">Risk Score</a></li>
+                    <li class="nav-item"><a class="nav-link" href="provider.html" data-i18n="nav.provider">Provider</a></li>
+                </ul>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link lang-toggle" href="#" onclick="I18n.toggle(); return false;">EN</a></li>
                 </ul>
             </div>
         </div>
@@ -33,24 +36,24 @@
 
     <div class="container-fluid px-4 py-3">
         <div class="page-header">
-            <h1>Provider Risk Score</h1>
-            <p>Punteggio composito 0-100 basato su 8 componenti. Provider con score &ge;70 sono considerati ad alto rischio.</p>
+            <h1 data-i18n="risk.title">Provider Risk Score</h1>
+            <p data-i18n-html="risk.subtitle">Punteggio composito 0-100 basato su 8 componenti. Provider con score &ge;70 sono considerati ad alto rischio.</p>
         </div>
 
         <!-- Distribution -->
-        <h2 class="section-title">Distribuzione Risk Score</h2>
+        <h2 class="section-title" data-i18n="risk.distribution">Distribuzione Risk Score</h2>
         <div class="chart-container chart-md" id="chart-distribution"></div>
 
         <!-- Stacked Bar Top 10 -->
-        <h2 class="section-title">Top 10 Provider - Composizione Score</h2>
+        <h2 class="section-title" data-i18n="risk.top10">Top 10 Provider - Composizione Score</h2>
         <div class="chart-container chart-md" id="chart-stacked"></div>
 
         <!-- Ranking Table -->
-        <h2 class="section-title">Ranking Completo</h2>
+        <h2 class="section-title" data-i18n="risk.ranking">Ranking Completo</h2>
         <div class="table-container" id="table-ranking"></div>
 
         <!-- Correlation Heatmap -->
-        <h2 class="section-title">Correlazione tra Componenti</h2>
+        <h2 class="section-title" data-i18n="risk.correlation">Correlazione tra Componenti</h2>
         <div class="chart-container chart-lg" id="chart-correlation"></div>
     </div>
 
@@ -59,11 +62,12 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/app.js"></script>
     <script src="js/charts.js"></script>
     <script src="js/tables.js"></script>
     <script>
-    (async function() {
+    async function renderPage() {
         // Distribution histogram (pre-binned)
         const dist = await App.fetchData('risk/distribution.json');
         if (dist && dist.bin_edges && dist.counts) {
@@ -81,15 +85,15 @@
                 width: edges[1] - edges[0],
             };
             Plotly.newPlot('chart-distribution', [trace], App.plotlyLayout(
-                `Distribuzione Risk Score (N=${App.fmtNum(dist.total)}, Media=${App.fmtFloat(dist.mean,1)}, Mediana=${App.fmtFloat(dist.median,1)}, Alto Rischio=${App.fmtNum(dist.high_risk_count)})`, {
+                `${I18n.t('risk.distribution')} (N=${App.fmtNum(dist.total)}, Media=${App.fmtFloat(dist.mean,1)}, Mediana=${App.fmtFloat(dist.median,1)}, ${I18n.t('overview.kpi.risk')}=${App.fmtNum(dist.high_risk_count)})`, {
                     xaxis: { title: 'Risk Score' },
-                    yaxis: { title: 'Conteggio' },
+                    yaxis: { title: I18n.t('chart.risk.count') },
                     shapes: [{
                         type: 'line', x0: 70, x1: 70, y0: 0, y1: 1,
                         yref: 'paper', line: { color: 'red', dash: 'dash', width: 2 },
                     }],
                     annotations: [{
-                        x: 70, y: 1, yref: 'paper', text: 'Soglia Alto Rischio',
+                        x: 70, y: 1, yref: 'paper', text: I18n.t('risk.threshold'),
                         showarrow: false, yanchor: 'bottom', font: { color: 'red' },
                     }],
                 }
@@ -109,10 +113,10 @@
                 { field: 'temporal_spike_score', label: 'Spike' },
                 { field: 'ghost_provider_score', label: 'Ghost' },
                 { field: 'claims_per_bene_score', label: 'Claims/Bene' },
-                { field: 'concentration_score', label: 'Concentrazione' },
+                { field: 'concentration_score', label: I18n.t('col.concentration_score') },
             ];
             Charts.stackedBar('chart-stacked', top10, 'BILLING_PROVIDER_NPI_NUM', components,
-                'Top 10 Provider - Composizione Risk Score');
+                I18n.t('risk.top10'));
 
             // Full ranking table
             Tables.render('table-ranking', ranking, [
@@ -128,9 +132,12 @@
         const corr = await App.fetchData('risk/correlation.json');
         if (corr && corr.columns && corr.values) {
             Charts.heatmap('chart-correlation', corr.columns, corr.values,
-                'Matrice di Correlazione - Componenti Risk Score');
+                I18n.t('risk.correlation'));
         }
-    })();
+    }
+
+    renderPage();
+    window.addEventListener('langchange', () => renderPage());
     </script>
 </body>
 </html>

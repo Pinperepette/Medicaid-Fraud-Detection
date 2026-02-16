@@ -17,15 +17,18 @@
             </button>
             <div class="collapse navbar-collapse" id="navMain">
                 <ul class="navbar-nav">
-                    <li class="nav-item"><a class="nav-link" href="index.html">Metodologia</a></li>
-                    <li class="nav-item"><a class="nav-link" href="overview.html">Overview</a></li>
-                    <li class="nav-item"><a class="nav-link" href="benford.html">Benford</a></li>
-                    <li class="nav-item"><a class="nav-link" href="outliers.html">Outliers</a></li>
-                    <li class="nav-item"><a class="nav-link" href="billing.html">Billing</a></li>
-                    <li class="nav-item"><a class="nav-link" href="temporal.html">Temporale</a></li>
-                    <li class="nav-item"><a class="nav-link" href="volume.html">Volume</a></li>
-                    <li class="nav-item"><a class="nav-link" href="risk.html">Risk Score</a></li>
-                    <li class="nav-item"><a class="nav-link" href="provider.html">Provider</a></li>
+                    <li class="nav-item"><a class="nav-link" href="index.html" data-i18n="nav.methodology">Metodologia</a></li>
+                    <li class="nav-item"><a class="nav-link" href="overview.html" data-i18n="nav.overview">Overview</a></li>
+                    <li class="nav-item"><a class="nav-link" href="benford.html" data-i18n="nav.benford">Benford</a></li>
+                    <li class="nav-item"><a class="nav-link" href="outliers.html" data-i18n="nav.outliers">Outliers</a></li>
+                    <li class="nav-item"><a class="nav-link" href="billing.html" data-i18n="nav.billing">Billing</a></li>
+                    <li class="nav-item"><a class="nav-link" href="temporal.html" data-i18n="nav.temporal">Temporale</a></li>
+                    <li class="nav-item"><a class="nav-link" href="volume.html" data-i18n="nav.volume">Volume</a></li>
+                    <li class="nav-item"><a class="nav-link" href="risk.html" data-i18n="nav.risk">Risk Score</a></li>
+                    <li class="nav-item"><a class="nav-link" href="provider.html" data-i18n="nav.provider">Provider</a></li>
+                </ul>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link lang-toggle" href="#" onclick="I18n.toggle(); return false;">EN</a></li>
                 </ul>
             </div>
         </div>
@@ -33,17 +36,17 @@
 
     <div class="container-fluid px-4 py-3">
         <div class="page-header">
-            <h1>Analisi Legge di Benford</h1>
-            <p>La Legge di Benford prevede che la prima cifra degli importi segua una distribuzione logaritmica. Deviazioni significative possono indicare manipolazione dei dati.</p>
+            <h1 data-i18n="benford.title">Analisi Legge di Benford</h1>
+            <p data-i18n-html="benford.subtitle">La Legge di Benford prevede che la prima cifra degli importi segua una distribuzione logaritmica. Deviazioni significative possono indicare manipolazione dei dati.</p>
         </div>
 
         <!-- Overall Distribution -->
-        <h2 class="section-title">Distribuzione Globale Prima Cifra</h2>
+        <h2 class="section-title" data-i18n="benford.global">Distribuzione Globale Prima Cifra</h2>
         <div class="chart-container chart-md" id="chart-benford"></div>
         <div id="chi2-result" class="alert alert-info mb-3" style="display:none"></div>
 
         <!-- Top HCPCS by MAD -->
-        <h2 class="section-title">Top HCPCS per Deviazione (MAD)</h2>
+        <h2 class="section-title" data-i18n="benford.topHcpcs">Top HCPCS per Deviazione (MAD)</h2>
         <div class="row">
             <div class="col-lg-6">
                 <div class="chart-container chart-md" id="chart-hcpcs-mad"></div>
@@ -54,7 +57,7 @@
         </div>
 
         <!-- Top Providers by MAD -->
-        <h2 class="section-title">Top Provider per Deviazione (MAD)</h2>
+        <h2 class="section-title" data-i18n="benford.topProviders">Top Provider per Deviazione (MAD)</h2>
         <div class="table-container" id="table-providers"></div>
     </div>
 
@@ -63,11 +66,12 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/app.js"></script>
     <script src="js/charts.js"></script>
     <script src="js/tables.js"></script>
     <script>
-    (async function() {
+    async function renderPage() {
         // Overall Benford
         const overall = await App.fetchData('benford/overall.json');
         if (overall && overall.distribution) {
@@ -80,17 +84,20 @@
                 // Calcola MAD dal distribution array
                 const mad = overall.distribution.reduce((s, d) => s + Math.abs(d.deviation), 0) / overall.distribution.length;
                 let madLabel, madClass;
-                if (mad < 0.006) { madLabel = 'Conformita\' stretta'; madClass = 'text-success'; }
-                else if (mad < 0.012) { madLabel = 'Conformita\' accettabile'; madClass = 'text-info'; }
-                else if (mad < 0.015) { madLabel = 'Conformita\' marginale'; madClass = 'text-warning'; }
-                else { madLabel = 'Non conforme'; madClass = 'text-danger'; }
+                if (mad < 0.006) { madLabel = I18n.t('benford.mad.strict'); madClass = 'text-success'; }
+                else if (mad < 0.012) { madLabel = I18n.t('benford.mad.acceptable'); madClass = 'text-info'; }
+                else if (mad < 0.015) { madLabel = I18n.t('benford.mad.marginal'); madClass = 'text-warning'; }
+                else { madLabel = I18n.t('benford.mad.nonconform'); madClass = 'text-danger'; }
+
+                const chi2Label = c.significant ? I18n.t('benford.chi2.significant') : I18n.t('benford.chi2.compatible');
+                const noteText = I18n.t('benford.chi2.note').replace('{mad}', mad.toFixed(4));
 
                 el.innerHTML = `<strong>Test Chi-Quadro:</strong> &chi;&sup2; = ${App.fmtFloat(c.chi2, 2)},
                     p-value ${c.p_value < 0.001 ? '< 0.001' : '= ' + App.fmtFloat(c.p_value, 4)}
-                    &mdash; ${c.significant ? 'Deviazione statisticamente significativa' : 'Compatibile con Benford'}
+                    &mdash; ${chi2Label}
                     <br><strong>MAD (Mean Absolute Deviation):</strong> ${mad.toFixed(4)}
                     &mdash; <span class="${madClass}"><strong>${madLabel}</strong></span> (soglie Nigrini 2012: &lt;0.006 stretta, 0.006-0.012 accettabile, 0.012-0.015 marginale, &gt;0.015 non conforme)
-                    <br><small class="text-muted">Nota: il test &chi;&sup2; risulta significativo per effetto della dimensione campionaria (~190 milioni di osservazioni). Con campioni cosi' grandi, anche deviazioni minime producono p-value prossimi a zero. Il MAD e' la metrica piu' appropriata per valutare la conformita' a Benford su grandi dataset: il valore di ${mad.toFixed(4)} indica che la distribuzione globale e' sostanzialmente conforme. Le deviazioni rilevanti sono concentrate su specifici provider, non sul dataset aggregato.</small>`;
+                    <br><small class="text-muted">${noteText}</small>`;
             }
         }
 
@@ -98,7 +105,7 @@
         const hcpcs = await App.fetchData('benford/by_hcpcs.json');
         if (hcpcs && hcpcs.length) {
             const top20 = hcpcs.slice(0, 20);
-            Charts.barChart('chart-hcpcs-mad', top20, 'HCPCS_CODE', 'mad', 'Top 20 HCPCS - MAD', true);
+            Charts.barChart('chart-hcpcs-mad', top20, 'HCPCS_CODE', 'mad', I18n.t('benford.topHcpcs'), true);
             Tables.render('table-hcpcs', hcpcs, [
                 'HCPCS_CODE', 'mad', 'chi2', 'p_value', 'total_records',
             ], { order: [[1, 'desc']] });
@@ -111,7 +118,10 @@
                 'BILLING_PROVIDER_NPI_NUM', 'mad', 'chi2', 'p_value', 'total_records',
             ], { order: [[1, 'desc']] });
         }
-    })();
+    }
+
+    renderPage();
+    window.addEventListener('langchange', () => renderPage());
     </script>
 </body>
 </html>

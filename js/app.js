@@ -53,7 +53,7 @@ const App = {
         if (el) {
             el.innerHTML = `<div class="loading">
                 <div class="spinner-border text-primary" role="status"></div>
-                <div class="mt-2">Caricamento dati...</div>
+                <div class="mt-2">${I18n.t('loading')}</div>
             </div>`;
         }
     },
@@ -86,7 +86,7 @@ const App = {
     // Set active nav link
     initNav() {
         const page = this.currentPage();
-        document.querySelectorAll('.nav-link').forEach(link => {
+        document.querySelectorAll('.nav-link:not(.lang-toggle)').forEach(link => {
             const href = link.getAttribute('href') || '';
             const linkPage = href.replace('.html', '').replace('./', '');
             if (linkPage === page || (page === 'index' && linkPage === '')) {
@@ -123,5 +123,8 @@ const App = {
     },
 };
 
-// Initialize nav on page load
-document.addEventListener('DOMContentLoaded', () => App.initNav());
+// Initialize nav and i18n on page load
+document.addEventListener('DOMContentLoaded', () => {
+    App.initNav();
+    I18n.init();
+});
